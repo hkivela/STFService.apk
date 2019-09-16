@@ -8,6 +8,7 @@ enum MessageType {
     DO_IDENTIFY = 1;
     DO_KEYEVENT = 2;
     DO_TYPE = 3;
+    DO_MOTIONEVENT = 31;
     DO_WAKE = 4;
     DO_ADD_ACCOUNT_MENU = 24;
     DO_REMOVE_ACCOUNT = 20;
@@ -304,6 +305,14 @@ message KeyEventRequest {
 
 message DoTypeRequest {
     required string text = 1;
+}
+
+message MotionEventRequest {
+  required int32 action = 1;
+  required int32 contact = 2;
+  required int32 x = 3;
+  required int32 y = 4;
+  required int32 pressure = 5;
 }
 
 message SetRotationRequest {

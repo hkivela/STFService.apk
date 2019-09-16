@@ -6,10 +6,13 @@ import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.Surface;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 
 import jp.co.cyberagent.stf.compat.InputManagerWrapper;
 import jp.co.cyberagent.stf.compat.PowerManagerWrapper;
@@ -210,8 +213,11 @@ public class Agent {
                         case SET_ROTATION:
                             handleSetRotationRequest(envelope);
                             break;
+                        case DO_MOTIONEVENT:
+                            handleMotionEventRequest(envelope);
+                            break;
                         default:
-                            System.err.printf("Unknown request type %d; maybe it's a Service call?\n", envelope.getType());
+                            System.err.printf("Unknown request type %d; maybe it's a Service call?\n", envelope.getType().getNumber());
                     }
                 }
             }
@@ -284,6 +290,28 @@ public class Agent {
         private void handleTypeRequest(Wire.Envelope envelope) throws IOException {
             Wire.DoTypeRequest request = Wire.DoTypeRequest.parseFrom(envelope.getMessage());
             type(request.getText());
+        }
+
+
+        private void handleMotionEventRequest(Wire.Envelope envelope) throws IOException {
+            Wire.MotionEventRequest request = Wire.MotionEventRequest.parseFrom(envelope.getMessage());
+            long now = SystemClock.uptimeMillis();
+            int x = request.getX();
+            int y = request.getY();
+
+            Pointer pointer = Pointer.getPointer(request.getContact());
+
+            if (request.getAction() == MotionEvent.ACTION_DOWN) {
+                pointer.lastDown = now;
+            }
+            if (x >= 0) {
+                pointer.x = x;
+            }
+            if (y >= 0) {
+                pointer.y = y;
+            }
+            inputManager.injectPointerEvent(MotionEvent.obtain(pointer.lastDown,
+                SystemClock.uptimeMillis(), request.getAction(), pointer.x, pointer.y, 0));
         }
 
         private void handleSetRotationRequest(Wire.Envelope envelope) throws IOException {
@@ -367,5 +395,46 @@ public class Agent {
         private void thawRotation() {
             windowManager.thawRotation();
         }
+    }
+}
+
+class Pointer {
+    private static Map<Integer, Pointer> pointers = new HashMap<Integer,Pointer>();
+
+    long lastDown;
+    int x;
+    int y;
+
+    static Pointer getPointer(int id) {
+        Pointer pointer = pointers.get(id);
+        if (pointer == null) {
+            pointer = new Pointer();
+            pointers.put(id, pointer);
+        }
+        return pointer;
+    }
+
+    public long getLastDown() {
+        return lastDown;
+    }
+
+    public void setLastDown(long lastDown) {
+        this.lastDown = lastDown;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public void setY(int y) {
+        this.y = y;
     }
 }
